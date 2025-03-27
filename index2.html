@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Neuromancer vOS 1.0 - Joseph Byram</title>
+    <style>
+        /* Existing styles from index1.html remain the same */
+        
+        /* Additional custom styles for personalization */
+        #profile p, #profile h3 {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .profile-section {
+            background-color: #0f0f2a;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .skill-tag {
+            background-color: var(--text-secondary);
+            color: var(--bg-primary);
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Existing body content from index1.html remains the same -->
+
+    <!-- Modify the Profile Section with Personalized Content -->
+    <section id="profile" class="content-section">
+        <h2>[ PROFILE: JOSEPH BYRAM - SYSTEM LOG ]</h2>
+        
+        <div class="profile-section">
+            <h3>[ SYSTEM CREDENTIALS ]</h3>
+            <p>Digital Identity: Joseph Byram<br>
+            Primary Interfaces: Art, Technology, Resilience<br>
+            Authorization Level: Creative Technologist</p>
+        </div>
+
+        <div class="profile-section">
+            <h3>[ CORE COMPETENCIES ]</h3>
+            <div class="skill-tags">
+                <span class="skill-tag">Web Development</span>
+                <span class="skill-tag">Graphic Design</span>
+                <span class="skill-tag">Network Engineering</span>
+                <span class="skill-tag">Digital Art</span>
+                <span class="skill-tag">AI Integration</span>
+                <span class="skill-tag">Creative Problem Solving</span>
+            </div>
+        </div>
+
+        <div class="profile-section">
+            <h3>[ MISSION STATEMENT ]</h3>
+            <p>Bridging the neural pathways between technology and artistic expression. Transforming constraints into canvases, digital interfaces into immersive experiences.</p>
+        </div>
+
+        <div class="profile-section">
+            <h3>[ BIOGRAPHICAL PROTOCOL ]</h3>
+            <p>Former Cisco Certified Network Associate turned multidisciplinary artist. My journey navigates through the intricate landscapes of web development, graphic design, and hands-on artistic creation. From crafting art with unconventional materials during challenging times to exploring the intersections of AI and creativity, I manifest resilience through every pixel and brushstroke.</p>
+        </div>
+    </section>
+
+    <script>
+        // Existing JavaScript from index1.html remains the same
+        
+        // Additional custom JavaScript for profile interactions
+        document.addEventListener('DOMContentLoaded', () => {
+            const profileSection = document.getElementById('profile');
+            const skillTags = profileSection.querySelectorAll('.skill-tag');
+            
+            skillTags.forEach(tag => {
+                tag.addEventListener('mouseover', () => {
+                    tag.style.backgroundColor = 'var(--accent-color)';
+                });
+                
+                tag.addEventListener('mouseout', () => {
+                    tag.style.backgroundColor = 'var(--text-secondary)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

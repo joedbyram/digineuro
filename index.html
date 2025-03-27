@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Neuromancer vOS 1.0</title>
+    <!-- ADD THREE.JS LIBRARY -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            /* Cyberpunk Color Palette */
+            --bg-primary: #0a0a1a;
+            --text-primary: #00ff9c;
+            --text-secondary: #00bb78;
+            --accent-color: #ff3d00;
+            --border-color: #1a1a3a;
+            --highlight-color: #3498db;
+
+            /* Pixel Font - Using a monospaced font for terminal feel */
+            --primary-font: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: default;
+        }
+
+        html, body {
+            height: 100%; /* Ensure html and body take full height */
+            overflow: hidden; /* Prevent body scrollbars, manage scrolling internally */
+        }
+
+        body {
+            font-family: var(--primary-font);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            display: flex; /* Make body a flex container */
+            flex-direction: column; /* Stack elements vertically */
+        }
+
+        /* Splash Screen Styles */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #splash-screen img {
+            max-width: 300px;
+            max-height: 300px;
+            opacity: 0;
+            animation: fadeIn 2s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Boot Sequence Styles */
+        #boot-sequence {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 20px; /* Add padding for smaller screens */
+        }
+
+        #boot-sequence .boot-line {
+            opacity: 0;
+            margin-bottom: 10px;
+            /* Simpler opacity transition */
+            transition: opacity 0.1s ease-in;
+            width: 100%; /* Ensure lines take full width for alignment */
+            text-align: left; /* Align text left */
+        }
+
+        /* Main Interface Styles */
+        #neuromancer-interface {
+            display: none; /* Initially hidden */
+            grid-template-columns: 250px 1fr; /* Fixed nav, flexible content */
+            /* height: 100vh; */ /* Let flexbox handle height */
+            border: 2px solid var(--border-color);
+            flex-grow: 1; /* Allow interface to fill body height */
+            overflow: hidden; /* Contain children */
+            background-color: var(--bg-primary); /* Ensure background applies */
+        }
+
+        #nav-panel {
+            background-color: #0f0f2a;
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto; /* Scroll only if needed */
+            height: 100%; /* Ensure nav panel takes full grid row height */
+        }
+
+        #nav-panel .nav-category {
+            margin-bottom: 15px;
+        }
+
+        #nav-panel .nav-category-title {
+            color: var(--highlight-color);
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        #nav-panel .nav-button {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+            padding: 10px;
+            margin-bottom: 5px;
+            text-align: left; /* Align text left */
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            white-space: nowrap; /* Prevent wrapping */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis if text is too long */
+        }
+
+        #nav-panel .nav-button:hover {
+            background-color: var(--text-secondary);
+            color: var(--bg-primary);
+            cursor: pointer;
+        }
+
+        #content-area {
+            display: flex; /* Use flexbox to manage sections */
+            flex-direction: column; /* Stack sections vertically */
+            overflow-y: auto; /* Allow scrolling ONLY for the content area */
+            padding: 20px;
+            height: 100%; /* Ensure content area takes full grid row height */
+        }
+
+        .content-section {
+            display: none; /* Hide inactive sections */
+            width: 100%;
+            animation: fadeInContent 0.5s ease-in-out;
+            min-height: 0; /* Prevent sections from taking minimum height when inactive */
+            background-color: var(--bg-primary); /* Ensure background */
+        }
+
+        @keyframes fadeInContent {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-section.active {
+            display: block; /* Show active section */
+            /* Allow content to define height for text sections */
+            /* Specific styles below handle visualizer height */
+        }
+
+        /* --- VISUALIZER SPECIFIC STYLES --- */
+        #visualizer.content-section.active {
+             display: flex; /* Use flex for the active visualizer section */
+             flex-direction: column; /* Stack title and container */
+             flex-grow: 1; /* Allow the active visualizer section to fill content-area */
+             height: 100%; /* Explicitly take full height of content-area */
+        }
+
+        #visualizer-container {
+            width: 100%;
+            flex-grow: 1; /* Allow container to fill available space in #visualizer */
+            min-height: 200px; /* Ensure it has *some* height even if flex fails */
+            overflow: hidden;
+            position: relative; /* For positioning canvas and trigger */
+        }
+
+        #visualizer-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute; /* Position canvas within container */
+            top: 0;
+            left: 0;
+        }
+        /* --- END VISUALIZER STYLES --- */
+
+        /* Style for an optional overlay/easter egg trigger */
+        .easter-egg-trigger {
+            position: absolute; /* Position relative to visualizer-container */
+            bottom: 10px;
+            right: 10px;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            opacity: 0.5;
+            transition: opacity 0.3s ease, color 0.3s ease;
+            cursor: pointer;
+            z-index: 10; /* Ensure it's above the canvas */
+            background-color: rgba(10, 10, 26, 0.7); /* Slight background */
+            padding: 2px 5px;
+            border: 1px solid var(--border-color);
+        }
+        .easter-egg-trigger:hover {
+             opacity: 1;
+             color: var(--accent-color);
+        }
+
+        /* Common Section Header Style */
+        .content-section h2 {
+            color: var(--highlight-color);
+            margin-bottom: 15px;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        /* Profile Section Specific Styles */
+        #profile h3 {
+            color: var(--highlight-color);
+            margin-top: 15px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 5px;
+        }
+        #profile p {
+            margin-bottom: 1em;
+        }
+        #profile strong {
+            color: var(--text-secondary);
+            font-weight: normal; /* Keep monospace feel */
+        }
+
+
+        /* Scanline Effect */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 9998; /* Below splash/boot but above content */
+        }
+
+        /* Filter Styles */
+        .filter-container {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .filter-button {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        .filter-button.active,
+        .filter-button:hover {
+            background-color: var(--text-secondary);
+            color: var(--bg-primary);
+        }
+
+        /* Art Gallery Grid */
+        .art-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .art-item {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background-color: #0f0f2a; /* Slightly different background */
+        }
+
+        .art-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 255, 156, 0.1);
+        }
+
+        .art-item img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .art-item p, .art-item h3 {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        .art-item h3 {
+            color: var(--highlight-color);
+            font-size: 1rem;
+        }
+
+
+        /* Contact Form Styles */
+        #contact form {
+            margin-top: 20px;
+            max-width: 600px; /* Limit form width */
+        }
+        #contact label { /* Add labels for accessibility */
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+        #contact input[type="text"],
+        #contact textarea {
+            display: block;
+            width: 100%;
+            background-color: #0f0f2a;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            margin-bottom: 15px;
+            font-family: var(--primary-font);
+        }
+        #contact textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        #contact input[type="text"]:focus,
+        #contact textarea:focus {
+             outline: none;
+             border-color: var(--highlight-color);
+             box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+
+        #contact button[type="submit"] {
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+            border: none;
+            padding: 10px 20px;
+            font-family: var(--primary-font);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+        #contact button[type="submit"]:hover {
+            background-color: var(--text-secondary);
+             color: var(--bg-primary);
+        }
+
+        /* General Paragraph Styling */
+        p {
+            color: var(--text-primary);
+        }
+
+        /* Error Message Styling */
+        .error-message {
+            color: var(--accent-color) !important;
+            font-weight: bold;
+            margin-top: 20px;
+            border: 1px dashed var(--accent-color);
+            padding: 10px;
+            background-color: rgba(255, 61, 0, 0.1);
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <img src="/api/placeholder/300/300" alt="Digital Neuromancer Logo">
+    </div>
+
+    <!-- Boot Sequence -->
+    <div id="boot-sequence">
+        <!-- Boot lines will be dynamically added by JavaScript -->
+    </div>
+
+    <!-- Main Interface -->
+    <div id="neuromancer-interface">
+        <!-- Navigation Panel -->
+        <div id="nav-panel">
+            <div class="nav-category">
+                <div class="nav-category-title">[ System ]</div>
+                <div class="nav-button" data-section="visualizer">[ Core Matrix ]</div>
+                <div class="nav-button" data-section="profile">[ usr/bin/profile ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Art Cache ]</div>
+                <div class="nav-button" data-section="art-digital">[ Digital Art ]</div>
+                <div class="nav-button" data-section="art-physical">[ Physical Works ]</div>
+                <div class="nav-button" data-section="art-bio">[ Bio-Code Art ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Projects ]</div>
+                <div class="nav-button" data-section="projects-web">[ Web Apps ]</div>
+                <div class="nav-button" data-section="projects-design">[ Design ]</div>
+                <div class="nav-button" data-section="projects-experimental">[ Experimental ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Transmissions ]</div>
+                <div class="nav-button" data-section="thoughts-tech">[ Tech Insights ]</div>
+                <div class="nav-button" data-section="thoughts-art">[ Art Reflections ]</div>
+                <div class="nav-button" data-section="thoughts-philosophy">[ Philosophical ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Communication ]</div>
+                <div class="nav-button" data-section="contact">[ Secure Link ]</div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area">
+
+            <!-- VISUALIZER SECTION - ACTIVE BY DEFAULT -->
+            <section id="visualizer" class="content-section active">
+                <h2>[ CORE VISUALIZATION MATRIX ]</h2>
+                <div id="visualizer-container">
+                    <!-- Three.js Canvas will be inserted here -->
+                    <div class="easter-egg-trigger" title="Engage transformation controls">[ EGG_TRGR ]</div>
+                     <!-- Error messages might appear here -->
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <section id="profile" class="content-section">
+                <h2>[ PROFILE: SYSTEM LOG ]</h2>
+                <p>> Identity Record Loaded: <strong>Joseph Byram</strong></p>
+                <br>
+                <h3>Bio: An Exploration of Art, Technology, and Resilience</h3>
+                <p>Joseph Byram is a multifaceted individual with a compelling journey marked by a unique blend of artistic passion, technological aptitude, and demonstrable resilience. Initially rooted in the world of technology, evidenced by his early achievement as a Cisco Certified Network Associate and experience in web development and graphic design, Joseph has transitioned into a hands-on artist exploring the power of creative expression.</p>
+                <p>His resourcefulness shines through anecdotes of creating art even in restrictive environments, utilizing unconventional materials like crayons and even his own blood. This demonstrates a profound need for artistic outlet and an indomitable spirit.</p>
+                <p>Joseph's interests extend to the intersection of art and technology, with a keen interest in AI for art analysis and feedback. He also expresses a fascination with the natural world, particularly the vibrational qualities of terpenes in cannabis, drawing connections between nature, art, and the interplay of light and color.</p>
+                <p>Currently working on an art book and a web application, Joseph embodies a dynamic blend of creativity, technical skill, and a continuous drive for exploration and learning.</p>
+            </section>
+
+            <!-- Art Sections -->
+            <section id="art-digital" class="content-section">
+                <h2>[ DIGITAL ART CACHE ]</h2>
+                <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="illustration">Illustration</button>
+                    <button class="filter-button" data-filter="pixel">Pixel Art</button>
+                    <button class="filter-button" data-filter="generative">Generative</button>
+                    <button class="filter-button" data-filter="3d">3D Render</button>
+                </div>
+                <div class="art-grid">
+                    <div class="art-item" data-category="illustration">
+                        <img src="/api/placeholder/200/200" alt="Digital Illustration">
+                        <p>Cybernetic Landscape v1</p>
+                    </div>
+                    <div class="art-item" data-category="pixel">
+                        <img src="/api/placeholder/200/200" alt="Pixel Art">
+                        <p>Neon Circuit Sprite</p>
+                    </div>
+                     <div class="art-item" data-category="generative">
+                        <img src="/api/placeholder/200/200" alt="Generative Art">
+                        <p>Code Bloom Alpha</p>
+                    </div>
+                     <div class="art-item" data-category="3d">
+                        <img src="/api/placeholder/200/200" alt="3D Render">
+                        <p>Chrome Artifact</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="art-physical" class="content-section">
+                <h2>[ PHYSICAL WORKS ARCHIVE ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="painting">Painting</button>
+                    <button class="filter-button" data-filter="drawing">Drawing</button>
+                    <button class="filter-button" data-filter="unconventional">Unconventional</button>
+                </div>
+                <div class="art-grid">
+                    <div class="art-item" data-category="drawing">
+                        <img src="/api/placeholder/200/200" alt="Physical Artwork - Drawing">
+                        <p>Graphite Memory</p>
+                    </div>
+                     <div class="art-item" data-category="unconventional">
+                        <img src="/api/placeholder/200/200" alt="Physical Artwork - Unconventional">
+                        <p>Restriction Study #3</p>
+                    </div>
+                    <div class="art-item" data-category="painting">
+                        <img src="/api/placeholder/200/200" alt="Physical Artwork - Painting">
+                        <p>Acrylic Glitch</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="art-bio" class="content-section">
+                <h2>[ BIO-CODE EXPERIMENTS ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="terpene">Terpene Viz</button>
+                    <button class="filter-button" data-filter="generative-bio">Generative Bio</button>
+                </div>
+                <div class="art-grid">
+                    <div class="art-item" data-category="terpene">
+                        <img src="/api/placeholder/200/200" alt="Bio-Code Art - Terpene">
+                        <p>Limonene Echoes</p>
+                    </div>
+                    <div class="art-item" data-category="generative-bio">
+                        <img src="/api/placeholder/200/200" alt="Bio-Code Art - Generative">
+                        <p>Cellular Automata Bloom</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects Sections -->
+            <section id="projects-web" class="content-section">
+                <h2>[ WEB APPLICATION SCHEMATICS ]</h2>
+                <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="frontend">Frontend</button>
+                    <button class="filter-button" data-filter="backend">Backend</button>
+                    <button class="filter-button" data-filter="fullstack">Full Stack</button>
+                    <button class="filter-button" data-filter="ai-integrated">AI Integrated</button>
+                </div>
+                <div class="art-grid">
+                    <div class="art-item" data-category="frontend">
+                        <img src="/api/placeholder/200/200" alt="Web Project">
+                        <p>vOS Interface</p>
+                    </div>
+                    <div class="art-item" data-category="ai-integrated">
+                        <img src="/api/placeholder/200/200" alt="AI Web Project">
+                        <p>Art Analysis Engine [WIP]</p>
+                    </div>
+                    <div class="art-item" data-category="fullstack">
+                        <img src="/api/placeholder/200/200" alt="Full Stack Project">
+                        <p>Secure Transmission Hub</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="projects-design" class="content-section">
+                 <h2>[ DESIGN BLUEPRINTS ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="uiux">UI/UX</button>
+                    <button class="filter-button" data-filter="graphic">Graphic Design</button>
+                    <button class="filter-button" data-filter="conceptual">Conceptual</button>
+                </div>
+                <div class="art-grid">
+                    <div class="art-item" data-category="graphic">
+                        <img src="/api/placeholder/200/200" alt="Design Project">
+                        <p>Neuromancer Logo Iterations</p>
+                    </div>
+                     <div class="art-item" data-category="uiux">
+                        <img src="/api/placeholder/200/200" alt="UI/UX Project">
+                        <p>Art Book Layout Mockup</p>
+                    </div>
+                </div>
+            </section>
+
+             <section id="projects-experimental" class="content-section">
+                 <h2>[ EXPERIMENTAL PROTOTYPES ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="vr">VR</button>
+                    <button class="filter-button" data-filter="interactive">Interactive Art</button>
+                    <button class="filter-button" data-filter="hardware">Hardware Mods</button>
+                </div>
+                <div class="art-grid">
+                    <div class="art-item" data-category="interactive">
+                        <img src="/api/placeholder/200/200" alt="Experimental Project">
+                        <p>Color/Vibration Synth v0.1</p>
+                    </div>
+                     <div class="art-item" data-category="hardware">
+                        <img src="/api/placeholder/200/200" alt="Hardware Mod Project">
+                        <p>Modified Deck Interface</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Thoughts Sections -->
+             <section id="thoughts-tech" class="content-section">
+                 <h2>[ TECH TRANSMISSION LOGS ]</h2>
+                 <div class="art-grid"> <!-- Using grid for consistency -->
+                     <div class="art-item">
+                         <h3>AI Art Analysis</h3>
+                         <p>Exploring the potential and pitfalls of using AI for feedback on creative work. Bias in algorithms? Subjectivity challenges...</p>
+                     </div>
+                     <div class="art-item">
+                         <h3>Open Source Ethos</h3>
+                         <p>Reflections on OpenWrt, DD-WRT and the freedom of customizable tech versus walled gardens. Security implications...</p>
+                     </div>
+                     <div class="art-item">
+                         <h3>Decentralized Future?</h3>
+                         <p>Thoughts on blockchain, distributed networks, and their potential impact on art provenance and digital ownership.</p>
+                     </div>
+                 </div>
+             </section>
+
+             <section id="thoughts-art" class="content-section">
+                 <h2>[ ART REFLECTIONS CACHE ]</h2>
+                 <div class="art-grid">
+                     <div class="art-item">
+                         <h3>Resourceful Creation</h3>
+                         <p>The drive to create persists even when tools are scarce. Reflections on unconventional mediums and the meaning derived from limitation.</p>
+                     </div>
+                      <div class="art-item">
+                         <h3>Light, Color, Vibration</h3>
+                         <p>Connecting the natural vibrations (terpenes, sound) with the visual spectrum in art. Synesthetic explorations...</p>
+                     </div>
+                      <div class="art-item">
+                         <h3>Authenticity in Digital</h3>
+                         <p>Can digitally generated art possess the same 'aura' as physical work? The role of process and intent.</p>
+                     </div>
+                 </div>
+             </section>
+
+             <section id="thoughts-philosophy" class="content-section">
+                 <h2>[ PHILOSOPHICAL DATASCRIPTS ]</h2>
+                 <div class="art-grid">
+                     <div class="art-item">
+                         <h3>Resilience Codex</h3>
+                         <p>Navigating constraints and finding strength through creative expression, learning, and adaptation. The anti-fragile artist...</p>
+                     </div>
+                     <div class="art-item">
+                         <h3>Nature & Tech Symbiosis</h3>
+                         <p>Contemplating the intersection of the organic and the digital. Bio-mimicry, wetware, and the blurring lines of consciousness.</p>
+                     </div>
+                      <div class="art-item">
+                         <h3>The Search for Meaning</h3>
+                         <p>Through code, canvas, or connection - fragments of thought on purpose in a complex world.</p>
+                     </div>
+                 </div>
+             </section>
+
+
+            <!-- Contact Section -->
+            <section id="contact" class="content-section">
+                <h2>[ SECURE COMMUNICATION LINK ]</h2>
+                <p>> Establish encrypted channel... Authenticate and transmit below.</p>
+                <form>
+                    <label for="contact-alias">Transmission ID / Alias:</label>
+                    <input type="text" id="contact-alias" placeholder="[ REQUIRED ]" required>
+
+                    <label for="contact-message">Encrypted Message:</label>
+                    <textarea id="contact-message" placeholder="[ BEGIN TRANSMISSION... ]" required></textarea>
+
+                    <button type="submit">TRANSMIT SECURELY</button>
+                </form>
+            </section>
+        </div> <!-- End #content-area -->
+    </div> <!-- End #neuromancer-interface -->
+
+    <script>
+        // Variables accessible within the scope
+        let scene, camera, renderer, particles;
+        let mouseX = 0, mouseY = 0;
+        let animationFrameId = null; // To control animation loop
+        let interactionEnabled = false; // For easter egg
+        let isVisualizerActive = false; // Track if visualizer section is active
+
+        // Function to get CSS variable value
+        function getCssVariable(varName) {
+            try {
+                return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            } catch(e) {
+                console.warn(`Could not get CSS variable ${varName}`, e);
+                // Provide fallbacks if needed, though hardcoded colors are used as direct fallbacks below
+                if (varName === '--bg-primary') return '#0a0a1a';
+                if (varName === '--text-primary') return '#00ff9c';
+                if (varName === '--accent-color') return '#ff3d00';
+                return null; // Default fallback
+            }
+        }
+
+
+        // Initialize Three.js Scene
+        function initThreeJS() {
+            console.log("Attempting to initialize Three.js...");
+            const container = document.getElementById('visualizer-container');
+
+            if (!container) {
+                console.error("FATAL: Visualizer container (#visualizer-container) not found! Cannot initialize Three.js.");
+                const visualizerSection = document.getElementById('visualizer');
+                 if(visualizerSection) {
+                     // Clear previous error messages if any
+                    const existingError = visualizerSection.querySelector('.error-message');
+                    if (existingError) existingError.remove();
+                    // Add new error message
+                     const errorMsg = document.createElement('p');
+                     errorMsg.textContent = '[ CRITICAL ERROR: VISUALIZATION MATRIX OFFLINE - CONTAINER NOT FOUND ]';
+                     errorMsg.className = 'error-message'; // Add class for styling
+                     visualizerSection.appendChild(errorMsg);
+                 }
+                return; // Stop execution
+            }
+
+             // Check if already initialized (simple check based on renderer)
+             if (renderer) {
+                console.log("Three.js appears to be already initialized.");
+                // Ensure canvas is still in the container
+                if (!container.contains(renderer.domElement)) {
+                    console.log("Re-appending renderer DOM element.");
+                    container.appendChild(renderer.domElement);
+                }
+                // Ensure size is correct and animation is running if needed
+                onWindowResize();
+                if (isVisualizerActive && !animationFrameId) {
+                    startAnimation();
+                }
+                return; // Already set up
+             }
+
+            try {
+                // Scene
+                scene = new THREE.Scene();
+
+                // Camera
+                const fov = 75;
+                const aspect = container.clientWidth / container.clientHeight || 1;
+                const near = 0.1;
+                const far = 1000;
+                camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+                camera.position.z = 50;
+
+                // Renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // Use alpha: true
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                // Set clear color to transparent if alpha: true, background is handled by CSS
+                renderer.setClearColor(0x000000, 0);
+
+                // Append Renderer's Canvas to Container
+                container.appendChild(renderer.domElement);
+                console.log("Three.js renderer canvas appended.");
+
+                // Particles
+                const particleCount = 5000;
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const particleColor = new THREE.Color(getCssVariable('--text-primary') || '#00ff9c');
+                const accentColor = new THREE.Color(getCssVariable('--accent-color') || '#ff3d00');
+
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    // Torus-like distribution
+                    const radius = 20;
+                    const tube = 10;
+                    const u = Math.random() * Math.PI * 2;
+                    const v = Math.random() * Math.PI * 2;
+                    positions[i3]     = (radius + tube * Math.cos(v)) * Math.cos(u);
+                    positions[i3 + 1] = (radius + tube * Math.cos(v)) * Math.sin(u);
+                    positions[i3 + 2] = tube * Math.sin(v) + (Math.random() - 0.5) * 5; // Add some z-jitter
+
+                    // Color variation
+                    const color = Math.random() > 0.08 ? particleColor : accentColor; // Slightly fewer accent particles
+                    colors[i3] = color.r;
+                    colors[i3 + 1] = color.g;
+                    colors[i3 + 2] = color.b;
+                }
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                const material = new THREE.PointsMaterial({
+                    size: 0.3,
+                    vertexColors: true,
+                    sizeAttenuation: true,
+                    transparent: true,
+                    opacity: 0.85,
+                    blending: THREE.AdditiveBlending
+                });
+                particles = new THREE.Points(geometry, material);
+                scene.add(particles);
+
+                // Event Listeners
+                container.addEventListener('mousemove', onMouseMove, false);
+                window.addEventListener('resize', onWindowResize, false);
+
+                // Easter Egg Trigger (ensure it's found *within* the container now)
+                const eggTrigger = container.querySelector('.easter-egg-trigger');
+                if (eggTrigger) {
+                    eggTrigger.addEventListener('click', toggleInteraction);
+                } else {
+                    console.warn("Easter egg trigger element not found inside #visualizer-container.");
+                }
+
+                console.log("Three.js initialization successful.");
+                // Start animation only if the visualizer is intended to be active
+                if (isVisualizerActive) {
+                    startAnimation();
+                }
+
+            } catch (error) {
+                console.error("Error during Three.js initialization:", error);
+                 const visualizerSection = document.getElementById('visualizer');
+                 if(visualizerSection) {
+                    const existingError = visualizerSection.querySelector('.error-message');
+                    if (existingError) existingError.remove();
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = `[ ERROR INITIALIZING VISUALIZATION: ${error.message} ]`;
+                    errorMsg.className = 'error-message';
+                    // Append inside container for better placement?
+                    if (container) container.appendChild(errorMsg);
+                    else visualizerSection.appendChild(errorMsg);
+                 }
+                 // Clean up partially initialized objects if error occurred
+                 if (renderer) {
+                     if (renderer.domElement && renderer.domElement.parentNode) {
+                         renderer.domElement.parentNode.removeChild(renderer.domElement);
+                     }
+                     renderer = null; // Allow re-initialization attempt later
+                 }
+                 scene = null; camera = null; particles = null; // Reset state vars
+            }
+        }
+
+        // Start Animation Loop
+        function startAnimation() {
+            if (!animationFrameId) {
+                console.log("Starting animation loop...");
+                animate();
+            }
+        }
+
+        // Stop Animation Loop
+        function stopAnimation() {
+            if (animationFrameId) {
+                console.log("Stopping animation loop...");
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
+
+        // Animation Loop Logic
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+
+            if (!renderer || !scene || !camera || !particles) {
+                console.warn("animate() called but Three.js components not ready.");
+                stopAnimation(); // Stop if components are missing
+                return;
+            }
+
+            const time = Date.now() * 0.0003; // Slightly slower base rotation
+
+            // Base rotation
+            particles.rotation.x = time * 0.15;
+            particles.rotation.y = time * 0.1;
+
+            if (interactionEnabled) {
+                // Rotate particles based on mouse, dampened effect
+                 particles.rotation.x += (mouseY * 0.3 - particles.rotation.x + time * 0.15) * 0.02;
+                 particles.rotation.y += (mouseX * 0.3 - particles.rotation.y + time * 0.1) * 0.02;
+            } else {
+                 // Gently return to base rotation if interaction disabled
+                 particles.rotation.x += (time * 0.15 - particles.rotation.x) * 0.01;
+                 particles.rotation.y += (time * 0.1 - particles.rotation.y) * 0.01;
+            }
+
+            // Always look at center
+             camera.lookAt(scene.position);
+
+            try {
+                renderer.render(scene, camera);
+            } catch (renderError) {
+                console.error("Error during rendering:", renderError);
+                stopAnimation();
+                // Display render error?
+                const container = document.getElementById('visualizer-container');
+                if(container && !container.querySelector('.render-error-message')) {
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = `[ RENDER ERROR: ${renderError.message} ]`;
+                    errorMsg.className = 'error-message render-error-message';
+                    container.appendChild(errorMsg);
+                }
+            }
+        }
+
+        // Mouse Move Handler
+        function onMouseMove(event) {
+             // No need to calculate if interaction isn't enabled OR visualizer isn't active
+             if (!interactionEnabled || !isVisualizerActive) return;
+
+            const container = event.currentTarget; // The element listener is attached to
+            if (!container) return;
+
+            const rect = container.getBoundingClientRect();
+            // Ensure width/height are not zero to avoid NaN
+            const containerWidth = container.clientWidth || 1;
+            const containerHeight = container.clientHeight || 1;
+
+            mouseX = ((event.clientX - rect.left) / containerWidth) * 2 - 1;
+            mouseY = -((event.clientY - rect.top) / containerHeight) * 2 + 1;
+        }
+
+        // Window Resize Handler
+        function onWindowResize() {
+            const container = document.getElementById('visualizer-container');
+            // Check all necessary components
+            if (!container || !camera || !renderer) return;
+
+             const width = container.clientWidth;
+             const height = container.clientHeight;
+
+             // Don't resize if container is effectively hidden or zero-sized
+             if (width === 0 || height === 0) {
+                 // console.warn("Resize skipped, container has zero dimensions.");
+                 return;
+             }
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            // console.log(`Resized renderer to ${width}x${height}`);
+
+            // Perform a single render if the loop isn't running but should be
+             if (isVisualizerActive && !animationFrameId) {
+                 try {
+                     if (scene && camera) renderer.render(scene, camera);
+                 } catch (e) { console.error("Render error on resize:", e); }
+             }
+        }
+
+        // Easter Egg Toggle
+        function toggleInteraction() {
+            interactionEnabled = !interactionEnabled;
+            const eggTrigger = document.querySelector('#visualizer-container .easter-egg-trigger'); // Be specific
+             if (eggTrigger) {
+                eggTrigger.textContent = interactionEnabled ? '[ CTRL_ACTIVE ]' : '[ EGG_TRGR ]';
+                eggTrigger.title = interactionEnabled ? 'Transformation controls active (mouse)' : 'Engage transformation controls';
+            }
+            console.log("Interaction Enabled:", interactionEnabled);
+            // Reset mouse position when disabling to prevent jump on re-enable
+            if (!interactionEnabled) {
+                mouseX = 0;
+                mouseY = 0;
+            }
+        }
+
+
+        // --- DOMContentLoaded Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM Loaded.");
+            // Query elements needed early
+            const splashScreen = document.getElementById('splash-screen');
+            const bootSequence = document.getElementById('boot-sequence');
+            const neuromancerInterface = document.getElementById('neuromancer-interface');
+            const contentSections = document.querySelectorAll('.content-section');
+            const visualizerSection = document.getElementById('visualizer');
+            const navButtons = document.querySelectorAll('.nav-button'); // Query nav buttons once
+
+            if (!neuromancerInterface || !bootSequence || !splashScreen || contentSections.length === 0) {
+                 console.error("CRITICAL: Core interface elements missing. Site may not function.");
+                 // Maybe display a message directly in the body?
+                 document.body.innerHTML = '<p class="error-message">[ CORE INTERFACE FAILURE - DOM ELEMENTS MISSING ]</p>';
+                 return; // Stop all further JS execution
+            }
+
+
+            // Splash screen logic
+            setTimeout(() => {
+                 splashScreen.style.display = 'none';
+                bootSequenceAnimation();
+            }, 1500); // 1.5 sec splash
+
+            function bootSequenceAnimation() {
+                console.log("Starting boot sequence...");
+                 const bootLines = [ // Condensed lines
+                     "> PWR CHK: OK", "> MEM CHK: OK", "> NEURAL LINK v3.1: INIT",
+                     "> KERNEL [NEUROMANCER] v1.0: LOAD", "> HW DETECT: CYBERDECK X-9K",
+                     "> SUB-ETHA: ENCRYPTED", "> AUTH USER: [J.BYRAM]...", "> ACCESS GRANTED",
+                     "> WARNING: GRID MONITOR ACTIVE", "> CONNECTION: ESTABLISHED",
+                     "> CORE VIS MATRIX: INIT...", "> Welcome, Operator."
+                 ];
+
+                let delay = 0;
+                bootLines.forEach((line, index) => {
+                    // Stagger the appearance slightly
+                    delay += 100 + Math.random() * 50; // Base 100ms + small random jitter
+                    setTimeout(() => {
+                        if (!bootSequence) return; // Safety check
+                        const lineElement = document.createElement('div');
+                        lineElement.textContent = line;
+                        lineElement.classList.add('boot-line');
+                        bootSequence.appendChild(lineElement);
+                        // Trigger opacity transition
+                        requestAnimationFrame(() => { // Ensure element is in DOM before animating
+                             lineElement.style.opacity = '1';
+                        });
+
+
+                        if (index === bootLines.length - 1) {
+                            // After last line
+                            setTimeout(() => {
+                                 bootSequence.style.display = 'none';
+                                 neuromancerInterface.style.display = 'grid';
+                                console.log("Interface displayed. Setting up initial state...");
+
+                                // Set initial active state
+                                isVisualizerActive = true; // Assume visualizer is default
+                                let initialSectionId = 'visualizer';
+
+                                if (visualizerSection) {
+                                    visualizerSection.classList.add('active');
+                                    // Wait a tiny moment for CSS layout to apply before initializing three.js
+                                    requestAnimationFrame(() => {
+                                         setTimeout(() => {
+                                             initThreeJS();
+                                         }, 10); // Small delay helps ensure container has dimensions
+                                    });
+                                } else {
+                                     console.error("Visualizer section not found on init! Falling back to profile.");
+                                     isVisualizerActive = false; // Not active if fallback
+                                     initialSectionId = 'profile'; // Target profile instead
+                                     const profileSection = document.getElementById('profile');
+                                     if (profileSection) {
+                                         profileSection.classList.add('active');
+                                     } else {
+                                         console.error("Fallback profile section also not found!");
+                                         // Activate the first available section as last resort
+                                         if (contentSections.length > 0) {
+                                             contentSections[0].classList.add('active');
+                                             initialSectionId = contentSections[0].id;
+                                             console.log(`Falling back to first section: ${initialSectionId}`);
+                                         }
+                                     }
+                                }
+                                // Highlight the correct nav button for the initially active section
+                                highlightNavButton(initialSectionId);
+
+                            }, 300); // Shorter wait after last boot line
+                        }
+                    }, delay); // Use staggered delay
+                });
+            }
+
+            // Helper to highlight nav button
+            function highlightNavButton(sectionId) {
+                navButtons.forEach(btn => {
+                    if (btn) { // Safety check
+                        if (btn.getAttribute('data-section') === sectionId) {
+                            btn.style.backgroundColor = 'var(--text-secondary)';
+                            btn.style.color = 'var(--bg-primary)';
+                        } else {
+                            btn.style.backgroundColor = 'var(--bg-primary)';
+                            btn.style.color = 'var(--text-primary)';
+                        }
+                    }
+                });
+            }
+
+            // --- Navigation Logic ---
+            if (navButtons.length > 0) {
+                navButtons.forEach(button => {
+                    if (!button) {
+                        console.warn("Null element found in navButtons list during setup.");
+                        return; // Skip
+                    }
+                    button.addEventListener('click', () => {
+                        const sectionId = button.getAttribute('data-section');
+                        const targetSection = document.getElementById(sectionId);
+
+                        // Deactivate all sections
+                        contentSections.forEach(section => {
+                            if (section) section.classList.remove('active');
+                        });
+
+                        // Stop animation if visualizer was active and we're leaving it
+                        if (isVisualizerActive && sectionId !== 'visualizer') {
+                            isVisualizerActive = false;
+                            stopAnimation();
+                            console.log("Navigating away from visualizer, stopping animation.");
+                        }
+
+                        // Activate the target section
+                        if (targetSection) {
+                            targetSection.classList.add('active');
+                            highlightNavButton(sectionId); // Update nav button style
+
+                            // If the target IS the visualizer
+                            if (sectionId === 'visualizer') {
+                                if (!isVisualizerActive) {
+                                     isVisualizerActive = true;
+                                     console.log("Navigating to visualizer, ensuring init and starting animation.");
+                                     // Ensure init, resize, and start animation
+                                     // Use requestAnimationFrame to ensure layout is ready
+                                      requestAnimationFrame(() => {
+                                          setTimeout(() => { // Extra small delay
+                                             initThreeJS(); // Will re-append/check if needed
+                                             onWindowResize(); // Set correct size
+                                             startAnimation();
+                                          }, 10);
+                                      });
+                                } else {
+                                     // If already active, just ensure size is correct (e.g., if window resized while hidden)
+                                     onWindowResize();
+                                     console.log("Visualizer already active, ensuring size.");
+                                }
+                            }
+                        } else {
+                            // Handle invalid section ID - fallback (e.g., back to visualizer)
+                            console.warn(`Section with id "${sectionId}" not found. Re-activating visualizer.`);
+                            if (visualizerSection) {
+                                visualizerSection.classList.add('active');
+                                highlightNavButton('visualizer');
+                                if (!isVisualizerActive) { // Start animation if needed
+                                    isVisualizerActive = true;
+                                    requestAnimationFrame(() => { setTimeout(() => { initThreeJS(); onWindowResize(); startAnimation(); }, 10); });
+                                }
+                            } else {
+                                // Ultimate fallback if visualizer is also broken
+                                if (contentSections.length > 0) contentSections[0].classList.add('active');
+                                highlightNavButton(contentSections[0]?.id || '');
+                            }
+                        }
+                    }); // End click listener
+                }); // End forEach navButton
+            } else {
+                console.error("No navigation buttons found. Navigation disabled.");
+            }
+
+
+            // --- Filter Logic ---
+            const filterContainers = document.querySelectorAll('.filter-container');
+            filterContainers.forEach(container => {
+                 const filterButtons = container.querySelectorAll('.filter-button');
+                 // Use closest ancestor or specific selector if grid isn't immediate sibling
+                 const gridContainer = container.nextElementSibling; // Assumes .art-grid is next sibling
+
+                 if (!gridContainer || typeof gridContainer.querySelectorAll !== 'function') {
+                     // console.warn('Filter container is not followed by a valid grid element:', container);
+                     return; // Skip setup if structure is wrong
+                 }
+                 const items = gridContainer.querySelectorAll('.art-item');
+                 if (items.length === 0) return; // Skip if no items to filter
+
+                 filterButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        filterButtons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        const filter = button.getAttribute('data-filter');
+                        items.forEach(item => {
+                            const category = item.getAttribute('data-category');
+                            // Show if filter is 'all', item has no category, or category matches filter
+                            if (filter === 'all' || !category || category === filter) {
+                                item.style.display = ''; // Use empty string to reset to default display (block/grid item)
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+                    });
+                });
+            });
+
+            // --- Contact Form Logic ---
+            const contactForm = document.querySelector('#contact form');
+            if (contactForm) {
+                 contactForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    // Basic feedback, replace with actual submission logic
+                    alert('[ TRANSMISSION PACKET SENT... AWAITING ACKNOWLEDGEMENT ]');
+                    contactForm.reset();
+                });
+            }
+
+            console.log("Initial setup complete.");
+
+        }); // --- END DOMContentLoaded ---
+    </script>
+</body>
+</html>

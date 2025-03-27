@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Neuromancer vOS 1.0</title>
+    <style>
+        :root {
+            /* Cyberpunk Color Palette */
+            --bg-primary: #0a0a1a;
+            --text-primary: #00ff9c;
+            --text-secondary: #00bb78;
+            --accent-color: #ff3d00;
+            --border-color: #1a1a3a;
+            --highlight-color: #3498db;
+
+            /* Pixel Font - Using a monospaced font for terminal feel */
+            --primary-font: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: default;
+        }
+
+        body {
+            font-family: var(--primary-font);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Splash Screen Styles */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #splash-screen img {
+            max-width: 300px;
+            max-height: 300px;
+            opacity: 0;
+            animation: fadeIn 2s ease-in-out forwards;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Boot Sequence Styles */
+        #boot-sequence {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #boot-sequence .boot-line {
+            opacity: 0;
+            margin-bottom: 10px;
+        }
+
+        /* Main Interface Styles */
+        #neuromancer-interface {
+            display: none;
+            grid-template-columns: 250px 1fr;
+            height: 100vh;
+            border: 2px solid var(--border-color);
+        }
+
+        #nav-panel {
+            background-color: #0f0f2a;
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #nav-panel .nav-category {
+            margin-bottom: 15px;
+        }
+
+        #nav-panel .nav-category-title {
+            color: var(--highlight-color);
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        #nav-panel .nav-button {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+            padding: 10px;
+            margin-bottom: 5px;
+            text-align: center;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+        }
+
+        #nav-panel .nav-button:hover {
+            background-color: var(--text-secondary);
+            color: var(--bg-primary);
+            cursor: pointer;
+        }
+
+        #content-area {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .content-section {
+            display: none;
+            width: 100%;
+            animation: fadeInContent 0.5s ease-in-out;
+        }
+
+        @keyframes fadeInContent {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* Profile Section Specific Styles */
+        #profile h3 {
+            color: var(--highlight-color);
+            margin-top: 15px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 5px;
+        }
+        #profile p {
+            margin-bottom: 1em;
+        }
+        #profile strong {
+            color: var(--text-secondary);
+            font-weight: normal; /* Keep monospace feel */
+        }
+
+
+        /* Scanline Effect */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15),
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Filter Styles */
+        .filter-container {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-button {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--text-secondary);
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-button.active {
+            background-color: var(--text-secondary);
+            color: var(--bg-primary);
+        }
+
+        /* Art Gallery Grid */
+        .art-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .art-item {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .art-item:hover {
+            transform: scale(1.05);
+        }
+
+        .art-item img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Contact Form Styles */
+        #contact form {
+            margin-top: 20px;
+        }
+        #contact input[type="text"],
+        #contact textarea {
+            display: block;
+            width: 100%;
+            background-color: #0f0f2a;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            margin-bottom: 15px;
+            font-family: var(--primary-font);
+        }
+        #contact textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        #contact button[type="submit"] {
+            background-color: var(--accent-color);
+            color: var(--bg-primary);
+            border: none;
+            padding: 10px 20px;
+            font-family: var(--primary-font);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        #contact button[type="submit"]:hover {
+            background-color: var(--text-secondary);
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <img src="/api/placeholder/300/300" alt="Digital Neuromancer Logo">
+    </div>
+
+    <!-- Boot Sequence -->
+    <div id="boot-sequence">
+        <!-- Boot lines will be dynamically added by JavaScript -->
+    </div>
+
+    <!-- Main Interface -->
+    <div id="neuromancer-interface">
+        <!-- Navigation Panel -->
+        <div id="nav-panel">
+            <div class="nav-category">
+                <div class="nav-category-title">[ System ]</div>
+                <div class="nav-button" data-section="profile">[ usr/bin/profile ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Art Cache ]</div>
+                <div class="nav-button" data-section="art-digital">[ Digital Art ]</div>
+                <div class="nav-button" data-section="art-physical">[ Physical Works ]</div>
+                <div class="nav-button" data-section="art-bio">[ Bio-Code Art ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Projects ]</div>
+                <div class="nav-button" data-section="projects-web">[ Web Apps ]</div>
+                <div class="nav-button" data-section="projects-design">[ Design ]</div>
+                <div class="nav-button" data-section="projects-experimental">[ Experimental ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Transmissions ]</div>
+                <div class="nav-button" data-section="thoughts-tech">[ Tech Insights ]</div>
+                <div class="nav-button" data-section="thoughts-art">[ Art Reflections ]</div>
+                <div class="nav-button" data-section="thoughts-philosophy">[ Philosophical ]</div>
+            </div>
+
+            <div class="nav-category">
+                <div class="nav-category-title">[ Communication ]</div>
+                <div class="nav-button" data-section="contact">[ Secure Link ]</div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area">
+            <!-- Profile Section -->
+            <section id="profile" class="content-section">
+                <h2>[ PROFILE: SYSTEM LOG ]</h2>
+                <p>> Identity Record Loaded: <strong>Joseph Byram</strong></p>
+                <br>
+                <h3>Bio: An Exploration of Art, Technology, and Resilience</h3>
+                <p>Joseph Byram is a multifaceted individual with a compelling journey marked by a unique blend of artistic passion, technological aptitude, and demonstrable resilience. Initially rooted in the world of technology, evidenced by his early achievement as a Cisco Certified Network Associate and experience in web development and graphic design, Joseph has transitioned into a hands-on artist exploring the power of creative expression.</p>
+                <p>His resourcefulness shines through anecdotes of creating art even in restrictive environments, utilizing unconventional materials like crayons and even his own blood. This demonstrates a profound need for artistic outlet and an indomitable spirit.</p>
+                <p>Joseph's interests extend to the intersection of art and technology, with a keen interest in AI for art analysis and feedback. He also expresses a fascination with the natural world, particularly the vibrational qualities of terpenes in cannabis, drawing connections between nature, art, and the interplay of light and color.</p>
+                <p>Currently working on an art book and a web application, Joseph embodies a dynamic blend of creativity, technical skill, and a continuous drive for exploration and learning.</p>
+                <!-- The "In-Depth Research Report" is omitted as it feels more like meta-analysis than direct profile info, but could be added to a different section or linked if desired -->
+            </section>
+
+            <!-- Art Sections -->
+            <section id="art-digital" class="content-section">
+                <h2>[ DIGITAL ART CACHE ]</h2>
+                <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="illustration">Illustration</button>
+                    <button class="filter-button" data-filter="pixel">Pixel Art</button>
+                    <button class="filter-button" data-filter="generative">Generative</button>
+                </div>
+                <div class="art-grid">
+                    <!-- Placeholder art items -->
+                    <div class="art-item" data-category="illustration">
+                        <img src="/api/placeholder/200/200" alt="Digital Illustration">
+                        <p>Cybernetic Landscape</p>
+                    </div>
+                    <div class="art-item" data-category="pixel">
+                        <img src="/api/placeholder/200/200" alt="Pixel Art">
+                        <p>Neon Circuit</p>
+                    </div>
+                    <!-- More art items -->
+                </div>
+            </section>
+
+            <section id="art-physical" class="content-section">
+                <h2>[ PHYSICAL WORKS ARCHIVE ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="painting">Painting</button>
+                    <button class="filter-button" data-filter="drawing">Drawing</button>
+                    <button class="filter-button" data-filter="unconventional">Unconventional</button>
+                </div>
+                <div class="art-grid">
+                    <!-- Placeholder physical art items -->
+                    <div class="art-item" data-category="drawing">
+                        <img src="/api/placeholder/200/200" alt="Physical Artwork - Drawing">
+                        <p>Tactile Memories</p>
+                    </div>
+                     <div class="art-item" data-category="unconventional">
+                        <img src="/api/placeholder/200/200" alt="Physical Artwork - Unconventional">
+                        <p>Bloodlines</p> <!-- Example title based on bio -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="art-bio" class="content-section">
+                <h2>[ BIO-CODE EXPERIMENTS ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="terpene">Terpene Visualization</button>
+                    <button class="filter-button" data-filter="generative-bio">Generative Bio-patterns</button>
+                </div>
+                <div class="art-grid">
+                    <!-- Placeholder bio-art items -->
+                    <div class="art-item" data-category="terpene">
+                        <img src="/api/placeholder/200/200" alt="Bio-Code Art - Terpene">
+                        <p>Vibrational Echoes</p>
+                    </div>
+                    <div class="art-item" data-category="generative-bio">
+                        <img src="/api/placeholder/200/200" alt="Bio-Code Art - Generative">
+                        <p>Organic Algorithms</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects Sections -->
+            <section id="projects-web" class="content-section">
+                <h2>[ WEB APPLICATION SCHEMATICS ]</h2>
+                <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="frontend">Frontend</button>
+                    <button class="filter-button" data-filter="backend">Backend</button>
+                    <button class="filter-button" data-filter="fullstack">Full Stack</button>
+                    <button class="filter-button" data-filter="ai-integrated">AI Integrated</button>
+                </div>
+                <div class="art-grid">
+                    <!-- Placeholder project items -->
+                    <div class="art-item" data-category="frontend">
+                        <img src="/api/placeholder/200/200" alt="Web Project">
+                        <p>Interactive Dashboard</p>
+                    </div>
+                    <div class="art-item" data-category="ai-integrated">
+                        <img src="/api/placeholder/200/200" alt="AI Web Project">
+                        <p>AI Art Feedback Engine</p> <!-- Example based on bio -->
+                    </div>
+                </div>
+            </section>
+
+            <section id="projects-design" class="content-section">
+                 <h2>[ DESIGN BLUEPRINTS ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="uiux">UI/UX</button>
+                    <button class="filter-button" data-filter="graphic">Graphic Design</button>
+                    <button class="filter-button" data-filter="conceptual">Conceptual</button>
+                </div>
+                <div class="art-grid">
+                    <!-- Placeholder design items -->
+                    <div class="art-item" data-category="graphic">
+                        <img src="/api/placeholder/200/200" alt="Design Project">
+                        <p>Early Logos</p>
+                    </div>
+                </div>
+            </section>
+
+             <section id="projects-experimental" class="content-section">
+                 <h2>[ EXPERIMENTAL PROTOTYPES ]</h2>
+                 <div class="filter-container">
+                    <button class="filter-button active" data-filter="all">All</button>
+                    <button class="filter-button" data-filter="vr">VR</button>
+                    <button class="filter-button" data-filter="interactive">Interactive Art</button>
+                    <button class="filter-button" data-filter="hardware">Hardware Mods</button>
+                </div>
+                <div class="art-grid">
+                    <!-- Placeholder experimental items -->
+                    <div class="art-item" data-category="interactive">
+                        <img src="/api/placeholder/200/200" alt="Experimental Project">
+                        <p>Light & Color Synth</p> <!-- Example based on bio -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Thoughts Sections -->
+             <section id="thoughts-tech" class="content-section">
+                 <h2>[ TECH TRANSMISSION LOGS ]</h2>
+                 <div class="art-grid"> <!-- Using art-grid for layout, can be adapted -->
+                     <!-- Placeholder thought items - could be styled differently -->
+                     <div class="art-item">
+                         <h3>AI Art Analysis</h3>
+                         <p>Exploring the potential and pitfalls of using AI for feedback on creative work...</p>
+                     </div>
+                     <div class="art-item">
+                         <h3>Open Source Ethos</h3>
+                         <p>Reflections on OpenWrt, DD-WRT and the freedom of customizable tech...</p>
+                     </div>
+                 </div>
+             </section>
+
+             <section id="thoughts-art" class="content-section">
+                 <h2>[ ART REFLECTIONS CACHE ]</h2>
+                 <div class="art-grid">
+                     <div class="art-item">
+                         <h3>Resourceful Creation</h3>
+                         <p>The drive to create persists even when tools are scarce. Reflections on unconventional mediums...</p>
+                     </div>
+                      <div class="art-item">
+                         <h3>Light, Color, Vibration</h3>
+                         <p>Connecting the natural vibrations (terpenes) with the visual spectrum in art...</p>
+                     </div>
+                 </div>
+             </section>
+
+             <section id="thoughts-philosophy" class="content-section">
+                 <h2>[ PHILOSOPHICAL DATASCRIPTS ]</h2>
+                 <div class="art-grid">
+                     <div class="art-item">
+                         <h3>Resilience Codex</h3>
+                         <p>Navigating constraints and finding strength through creative expression and learning...</p>
+                     </div>
+                     <div class="art-item">
+                         <h3>Nature & Tech Symbiosis</h3>
+                         <p>Contemplating the intersection of the organic and the digital...</p>
+                     </div>
+                 </div>
+             </section>
+
+
+            <!-- Contact Section -->
+            <section id="contact" class="content-section">
+                <h2>[ SECURE COMMUNICATION LINK ]</h2>
+                <p>> Establish encrypted channel... Input credentials and message below.</p>
+                <form>
+                    <input type="text" placeholder="[ YOUR TRANSMISSION ID / ALIAS ]" required>
+                    <textarea placeholder="[ BEGIN ENCRYPTED MESSAGE... ]" required></textarea>
+                    <button type="submit">TRANSMIT SECURELY</button>
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // Splash Screen and Boot Sequence Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const splashScreen = document.getElementById('splash-screen');
+            const bootSequence = document.getElementById('boot-sequence');
+            const neuromancerInterface = document.getElementById('neuromancer-interface');
+             const profileSection = document.getElementById('profile'); // Get profile section
+
+            // Splash screen logic
+            setTimeout(() => {
+                splashScreen.style.display = 'none';
+                bootSequenceAnimation();
+            }, 3000); // Keep splash for 3 seconds
+
+            function bootSequenceAnimation() {
+                const bootLines = [
+                    "> PWR CHECK... OK",
+                    "> MEM CHK @ 640KB... OK",
+                    "> INIT NEURAL INTERFACE v3.1...",
+                    "> LOADING KERNEL [NEUROMANCER] vOS 1.0...",
+                    "> DETECTING HARDWARE... CYBERDECK X-9000",
+                    "> ESTABLISHING SUB-ETHA LINK... ENCRYPTING...",
+                    "> AUTHENTICATING USER: [JOSEPH BYRAM]...", // Personalized
+                    "> ACCESS CODE ACCEPTED: ************",
+                    "> WARNING: UNAUTHORIZED ACCESS PROHIBITED",
+                    "> DECRYPTION SUCCESSFUL. GRID CONNECTION ESTABLISHED.",
+                    "> Welcome, Operator." // Changed Admin to Operator
+                ];
+
+                bootLines.forEach((line, index) => {
+                    setTimeout(() => {
+                        const lineElement = document.createElement('div');
+                        lineElement.textContent = line;
+                        lineElement.classList.add('boot-line');
+                        bootSequence.appendChild(lineElement);
+
+                        setTimeout(() => {
+                            lineElement.style.opacity = '1';
+                        }, 50); // Quick fade in
+
+                        if (index === bootLines.length - 1) {
+                            setTimeout(() => {
+                                bootSequence.style.display = 'none';
+                                neuromancerInterface.style.display = 'grid';
+                                // Make profile section active by default after boot
+                                profileSection.classList.add('active');
+                                // Highlight the profile nav button
+                                const profileNavButton = document.querySelector('.nav-button[data-section="profile"]');
+                                if (profileNavButton) {
+                                    profileNavButton.style.backgroundColor = 'var(--text-secondary)';
+                                    profileNavButton.style.color = 'var(--bg-primary)';
+                                }
+                            }, 1000); // Shorter wait after last line
+                        }
+                    }, index * 250); // Slightly faster boot sequence
+                });
+            }
+
+            // Navigation Logic
+            const navButtons = document.querySelectorAll('.nav-button');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const sectionId = button.getAttribute('data-section');
+
+                    // Remove active class from all sections and reset button styles
+                    contentSections.forEach(section => {
+                        section.classList.remove('active');
+                    });
+                    navButtons.forEach(btn => {
+                        btn.style.backgroundColor = 'var(--bg-primary)';
+                        btn.style.color = 'var(--text-primary)';
+                    });
+
+                    // Activate selected section
+                    const activeSection = document.getElementById(sectionId);
+                    if (activeSection) { // Check if section exists
+                        activeSection.classList.add('active');
+                    }
+
+                    // Highlight selected nav button
+                    button.style.backgroundColor = 'var(--text-secondary)';
+                    button.style.color = 'var(--bg-primary)';
+                });
+            });
+
+            // Filter Logic for Art and Projects
+            const filterContainers = document.querySelectorAll('.filter-container');
+            filterContainers.forEach(container => {
+                const filterButtons = container.querySelectorAll('.filter-button');
+                // Find the next sibling element which is the grid container (art-grid in this case)
+                const gridContainer = container.nextElementSibling;
+
+                // Ensure gridContainer exists and has querySelectorAll method
+                 if (!gridContainer || typeof gridContainer.querySelectorAll !== 'function') {
+                    console.warn('Filter container is not followed by a valid grid element:', container);
+                    return; // Skip this filter container if the structure is wrong
+                }
+
+                const items = gridContainer.querySelectorAll('.art-item');
+
+                 if (items.length === 0) {
+                    // No items to filter in this section, maybe just skip adding listeners
+                    return;
+                }
+
+
+                filterButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        // Remove active class from all filter buttons in this container
+                        filterButtons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+
+                        const filter = button.getAttribute('data-filter');
+
+                        items.forEach(item => {
+                            // Check if item has the data-category attribute
+                            const category = item.getAttribute('data-category');
+                            if (filter === 'all' || !category || category === filter) {
+                                item.style.display = 'block'; // Show item
+                            } else {
+                                item.style.display = 'none'; // Hide item
+                            }
+                        });
+                    });
+                });
+            });
+
+             // Basic Contact Form Handler (prevents default page reload)
+            const contactForm = document.querySelector('#contact form');
+            if (contactForm) {
+                contactForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    alert('Transmission Initiated... [Backend endpoint required for actual sending]');
+                    // Here you would typically send the form data via fetch/AJAX
+                    contactForm.reset(); // Clear the form
+                });
+            }
+
+        });
+    </script>
+</body>
+</html>
